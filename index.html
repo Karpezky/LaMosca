@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Recaudación</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        h2, h3 {
+            text-align: center;
+            color: #333;
+        }
+
+        .form-container, .table-container {
+            background-color: #fff;
+            padding: 20px;
+            margin: 20px auto;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="date"],
+        input[type="tel"],
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #28a745;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        tfoot td {
+            font-weight: bold;
+            background-color: #f9f9f9;
+            text-align: left;
+        }
+
+        tfoot tr {
+            background-color: #f2f2f2;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h2>Datos Recaudados</h2>
+    <h3>Total Recaudado: <span id="totalRecaudado"></span></h3>
+    <button onclick="abrirModal('agregarModal')">Agregar Dato</button>
+    <button onclick="minimizarTabla()">Minimizar Tabla</button>
+    <label for="filtroFechas">Seleccionar Fechas:</label>
+    <input type="text" id="filtroFechas" name="filtroFechas" placeholder="Selecciona fechas separadas por comas" onchange="filtrarTabla()">
+    <label for="filtroFechaInicio">Filtrar desde:</label>
+    <input type="date" id="filtroFechaInicio" name="filtroFechaInicio">
+    <label for="filtroFechaFin">hasta:</label>
+    <input type="date" id="filtroFechaFin" name="filtroFechaFin" onchange="filtrarPorRango()">
+    <div class="table-container">
+        <div id="tablaContainer"></div>
+    </div>
+
+    <!-- Modal for adding data -->
+    <div id="agregarModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal('agregarModal')">×</span>
+            <h2>Agregar Datos</h2>
+            <form id="agregarForm">
+                <label for="tipo">Tipo:</label>
+                <select id="tipo" name="tipo">
+                    <option value="Máquinas">Máquinas</option>
+                    <option value="Mesas">Mesas</option>
+                    <option value="Otras">Otras</option>
+                </select><br><br>
+                <label for="fecha">Fecha:</label>
+                <input type="date" id="fecha" name="fecha"><br><br>
+                <label for="monto">Monto Recaudado:</label>
+                <input type="tel" id="monto" name="monto" pattern="[0-9]*" oninput="formatearMonto(this)"><br><br>
+                <button type="button" onclick="agregarDatos()">Agregar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for editing data -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModal('editModal')">×</span>
+            <h2>Editar Datos</h2>
+            <form id="editarForm">
+                <label for="editarTipo">Tipo:</label>
+                <select id="editarTipo" name="editarTipo">
+                    <option value="Máquinas">Máquinas</option>
+                    <option value="Mesas">Mesas</option>
+                    <option value="Otras">Otras</option>
+                </select><br><br>
+                <label for="editarFecha">Fecha:</label>
+                <input type="date" id="editarFecha" name="editarFecha"><br><br>
+                <label for="editarMonto">Monto Recaudado:</label>
+                <input type="tel" id="editarMonto" name="editarMonto" pattern="[0-9]*" oninput="formatearMonto(this)"><br><br>
+                <button type="button" onclick="guardarEdicion()">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let datos = JSON.parse(localStorage.getItem('datos')) || [];
+        let minimizado = false;
+        let editIndex = -1;
+
+        function abrirModal(id) {
+            document.getElementById(id).style.display = 'block';
+        }
+
+        function cerrarModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function abrirModalEditar(index) {
+            editIndex = index;
+            const dato = datos[index];
+            document.getElementById('editarTipo').value = dato.tipo;
+            document.getElementById('editarFecha').value = dato.fecha;
+            document.getElementById('editarMonto').value = formatearNumero(dato.monto).replace('$', '').replace(/\./g, '');
+            abrirModal('editModal');
+        }
+
+        function agregarDatos() {
+            const tipo = document.getElementById('tipo').value;
+            const fecha = document.getElementById('fecha').value;
+            const monto = parseFloat(document.getElementById('monto').value.replace(/\./g, '').replace('$', ''));
+
+            if (fecha && !isNaN(monto)) {
+                datos.push({ fecha, tipo, monto });
+                localStorage.setItem('datos', JSON.stringify(datos));
+                cerrarModal('agregarModal');
+                actualizarTabla();
+            } else {
+                alert('Por favor, ingrese una fecha y un monto válido.');
+            }
+        }
+
+        function formatearFecha(fecha) {
+            const opciones = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Santiago' };
+            const fechaLocal = new Date(fecha);
+            fechaLocal.setMinutes(fechaLocal.getMinutes() + fechaLocal.getTimezoneOffset());
+            return fechaLocal.toLocaleDateString('es-ES', opciones);
+        }
+
+        function formatearNumero(numero) {
+            return `$${Math.ceil(numero).toLocaleString('es-ES').replace(/,/g, '.')}`;
+        }
+
+        function formatearMonto(input) {
+            let valor = input.value.replace(/\./g, '').replace('$', '');
+            if (!isNaN(valor) && valor !== '') {
+                valor = parseFloat(valor).toLocaleString('es-ES').replace(/,/g, '.');
+                input.value = `$${valor}`;
+            } else {
+                input.value = '';
+            }
+        }
+
+                function limpiarDatosInvalidos() {
+            datos = datos.filter(dato => dato.fecha && dato.tipo && !isNaN(dato.monto));
+            localStorage.setItem('datos', JSON.stringify(datos));
+        }
+
+        function actualizarTabla() {
+            limpiarDatosInvalidos();
+            const tablaContainer = document.getElementById('tablaContainer');
+            tablaContainer.innerHTML = '';
+
+            const datosPorFecha = datos.reduce((acc, dato) => {
+                if (!acc[dato.fecha]) {
+                    acc[dato.fecha] = [];
+                }
+                acc[dato.fecha].push(dato);
+                return acc;
+            }, {});
+
+            let totalRecaudado = 0;
+            const fechas = Object.keys(datosPorFecha);
+            const ultimaFecha = fechas[fechas.length - 1];
+
+            for (const fecha in datosPorFecha) {
+                if (minimizado && fecha !== ultimaFecha) continue;
+
+                const tabla = document.createElement('table');
+                const thead = document.createElement('thead');
+                const tbody = document.createElement('tbody');
+                const tfoot = document.createElement('tfoot');
+
+                thead.innerHTML = `
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Monto Recaudado</th>
+                        <th>Acciones</th>
+                    </tr>
+                `;
+
+                let totalDia = 0;
+                datosPorFecha[fecha].forEach((dato, index) => {
+                    const fila = document.createElement('tr');
+                    fila.innerHTML = `
+                        <td data-label="Fecha">${formatearFecha(dato.fecha)}</td>
+                        <td data-label="Tipo">${dato.tipo}</td>
+                        <td data-label="Monto Recaudado">${formatearNumero(dato.monto)}</td>
+                        <td data-label="Acciones">
+                            <button onclick="abrirModalEditar(${index})">Editar</button>
+                            <button onclick="borrarDato('${dato.fecha}', '${dato.tipo}', ${dato.monto})">Borrar</button>
+                        </td>
+                    `;
+                    totalDia += dato.monto;
+                    tbody.appendChild(fila);
+                });
+
+                tfoot.innerHTML = `
+                    <tr>
+                        <td colspan="2"><strong>Total por Día:</strong></td>
+                        <td>${formatearNumero(totalDia)}</td>
+                        <td></td>
+                    </tr>
+                `;
+
+                tabla.appendChild(thead);
+                tabla.appendChild(tbody);
+                tabla.appendChild(tfoot);
+                tablaContainer.appendChild(tabla);
+            }
+
+            totalRecaudado = datos.reduce((acc, dato) => acc + dato.monto, 0);
+            document.getElementById('totalRecaudado').textContent = formatearNumero(totalRecaudado);
+        }
+
+        function minimizarTabla() {
+            minimizado = !minimizado;
+            actualizarTabla();
+        }
+
+        function filtrarTabla() {
+            const filtroFechas = document.getElementById('filtroFechas').value.split(',').map(fecha => fecha.trim());
+            if (!filtroFechas.length) {
+                actualizarTabla();
+                return;
+            }
+
+            const tablaContainer = document.getElementById('tablaContainer');
+            tablaContainer.innerHTML = '';
+
+            const datosFiltrados = datos.filter(dato => filtroFechas.includes(dato.fecha));
+            const datosPorFecha = datosFiltrados.reduce((acc, dato) => {
+                if (!acc[dato.fecha]) {
+                    acc[dato.fecha] = [];
+                }
+                acc[dato.fecha].push(dato);
+                return acc;
+            }, {});
+
+            let totalRecaudado = 0;
+
+            for (const fecha in datosPorFecha) {
+                const tabla = document.createElement('table');
+                const thead = document.createElement('thead');
+                const tbody = document.createElement('tbody');
+                const tfoot = document.createElement('tfoot');
+
+                thead.innerHTML = `
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Monto Recaudado</th>
+                        <th>Acciones</th>
+                    </tr>
+                `;
+
+                let totalDia = 0;
+                datosPorFecha[fecha].forEach((dato, index) => {
+                    const fila = document.createElement('tr');
+                    fila.innerHTML = `
+                        <td data-label="Fecha">${formatearFecha(dato.fecha)}</td>
+                        <td data-label="Tipo">${dato.tipo}</td>
+                        <td data-label="Monto Recaudado">${formatearNumero(dato.monto)}</td>
+                        <td data-label="Acciones">
+                            <button onclick="abrirModalEditar(${index})">Editar</button>
+                            <button onclick="borrarDato('${dato.fecha}', '${dato.tipo}', ${dato.monto})">Borrar</button>
+                        </td>
+                    `;
+                    totalDia += dato.monto;
+                    tbody.appendChild(fila);
+                });
+
+                tfoot.innerHTML = `
+                    <tr>
+                        <td colspan="2"><strong>Total por Día:</strong></td>
+                        <td>${formatearNumero(totalDia)}</td>
+                        <td></td>
+                    </tr>
+                `;
+
+                tabla.appendChild(thead);
+                tabla.appendChild(tbody);
+                tabla.appendChild(tfoot);
+                tablaContainer.appendChild(tabla);
+            }
+
+            const totalParcial = datosFiltrados.reduce((acc, dato) => acc + dato.monto, 0);
+            const totalParcialRow = document.createElement('tr');
+            totalParcialRow.innerHTML = `
+                <td colspan="2"><strong>Total Parcial:</strong></td>
+                <td>${formatearNumero(totalParcial)}</td>
+                <td></td>
+            `;
+            tablaContainer.appendChild(totalParcialRow);
+        }
+
+        function filtrarPorRango() {
+            const filtroFechaInicio = document.getElementById('filtroFechaInicio').value;
+            const filtroFechaFin = document.getElementById('filtroFechaFin').value;
+            if (!filtroFechaInicio || !filtroFechaFin) {
+                actualizarTabla();
+                return;
+            }
+
+            const tablaContainer = document.getElementById('tablaContainer');
+            tablaContainer.innerHTML = '';
+
+            const datosFiltrados = datos.filter(dato => dato.fecha >= filtroFechaInicio && dato.fecha <= filtroFechaFin);
+            const datosPorFecha = datosFiltrados.reduce((acc, dato) => {
+                if (!acc[dato.fecha]) {
+                    acc[dato.fecha] = [];
+                }
+                acc[dato.fecha].push(dato);
+                return acc;
+            }, {});
+
+            let totalRecaudado = 0;
+
+            for (const fecha in datosPorFecha) {
+                const tabla = document.createElement('table');
+                const thead = document.createElement('thead');
+                const tbody = document.createElement('tbody');
+                const tfoot = document.createElement('tfoot');
+
+                thead.innerHTML = `
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Monto Recaudado</th>
+                        <th>Acciones</th>
+                    </tr>
+                `;
+
+                let totalDia = 0;
+                datosPorFecha[fecha].forEach((dato, index) => {
+                    const fila = document.createElement('tr');
+                    fila.innerHTML = `
+                        <td data-label="Fecha">${formatearFecha(dato.fecha)}</td>
+                        <td data-label="Tipo">${dato.tipo}</td>
+                        <td data-label="Monto Recaudado">${formatearNumero(dato.monto)}</td>
+                        <td data-label="Acciones">
+                            <button onclick="abrirModalEditar(${index})">Editar</button>
+                            <button onclick="borrarDato('${dato.fecha}', '${dato.tipo}', ${dato.monto})">Borrar</button>
+                        </td>
+                    `;
+                    totalDia += dato.monto;
+                    tbody.appendChild(fila);
+                });
+
+                totalRecaudado += totalDia;
+
+                tfoot.innerHTML = `
+                    <tr>
+                        <td colspan="2"><strong>Total por Día:</strong></td>
+                        <td>${formatearNumero(totalDia)}</td>
+                        <td></td>
+                    </tr>
+                `;
+
+                tabla.appendChild(thead);
+                tabla.appendChild(tbody);
+                tabla.appendChild(tfoot);
+                tablaContainer.appendChild(tabla);
+            }
+
+            const totalParcial = datosFiltrados.reduce((acc, dato) => acc + dato.monto, 0);
+            const totalParcialRow = document.createElement('tr');
+            totalParcialRow.innerHTML = `
+                <td colspan="2"><strong>Total Parcial:</strong></td>
+                <td>${formatearNumero(totalParcial)}</td>
+                <td></td>
+            `;
+            tablaContainer.appendChild(totalParcialRow);
+        }
+
+        function borrarDato(fecha, tipo, monto) {
+            datos = datos.filter(dato => !(dato.fecha === fecha && dato.tipo === tipo && dato.monto === monto));
+            localStorage.setItem('datos', JSON.stringify(datos));
+            actualizarTabla();
+        }
+
+        function guardarEdicion() {
+            const tipo = document.getElementById('editarTipo').value;
+            const fecha = document.getElementById('editarFecha').value;
+                        const monto = parseFloat(document.getElementById('editarMonto').value.replace(/\./g, '').replace('$', ''));
+
+            if (fecha && !isNaN(monto)) {
+                datos[editIndex] = { fecha, tipo, monto };
+                localStorage.setItem('datos', JSON.stringify(datos));
+                cerrarModal('editModal');
+                actualizarTabla();
+            } else {
+                alert('Por favor, ingrese una fecha y un monto válido.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', actualizarTabla);
+    </script>
+</body>
+</html>
