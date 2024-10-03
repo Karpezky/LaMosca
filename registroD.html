@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingreso de Datos</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: auto;
+        }
+        h2 {
+            color: #343a40;
+        }
+        .table {
+            margin-top: 20px;
+            table-layout: auto;
+            word-wrap: normal;
+            font-size: 0.9em; /* Reduce el tamaño de la letra */
+        }
+        .table thead th {
+            background-color: #343a40;
+            color: #ffffff;
+            white-space: nowrap; /* Evita que el texto se corte */
+        }
+        .table tbody td {
+            white-space: nowrap; /* Evita que el texto se corte */
+        }
+        .table tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        .modal-header {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            border-color: #ffc107;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #e9ecef;
+        }
+        .minimize-btn {
+            cursor: pointer;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Total Recaudado: <span id="total">$0</span></h2>
+    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#dataModal">Agregar Datos</button>
+    <button type="button" class="btn btn-danger" id="clearTotal">Limpiar Total</button>
+    <button type="button" class="btn btn-secondary minimize-btn">Minimizar</button>
+    <div id="tablesContainer"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="dataModal" tabindex="-1" role="dialog" aria-labelledby="dataModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dataModalLabel">Ingreso de Datos</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="dataForm">
+                    <div class="form-group">
+                        <label for="area">Área</label>
+                        <select class="form-control" id="area" required>
+                            <option value="Mesas">Mesas</option>
+                            <option value="Máquina">Máquina</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="monto">Monto</label>
+                        <input type="text" class="form-control" id="monto" inputmode="numeric" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="fecha">Fecha</label>
+                        <input type="date" class="form-control" id="fecha" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Agregar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let total = 0;
+
+    function loadFromLocalStorage() {
+        const data = JSON.parse(localStorage.getItem('data')) || [];
+        total = parseFloat(localStorage.getItem('total')) || 0;
+        document.getElementById('total').innerText = formatCurrency(total);
+        const groupedData = groupDataByDate(data);
+        renderTables(groupedData);
+    }
+
+    function saveToLocalStorage(data, total) {
+        localStorage.setItem('data', JSON.stringify(data));
+        localStorage.setItem('total', total);
+    }
+
+    function formatCurrency(value) {
+        return `$${value.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    }
+
+    function groupDataByDate(data) {
+        return data.reduce((acc, item) => {
+            if (!acc[item.fecha]) {
+                acc[item.fecha] = [];
+            }
+            acc[item.fecha].push(item);
+            return acc;
+        }, {});
+    }
+
+    function renderTables(groupedData) {
+        const tablesContainer = document.getElementById('tablesContainer');
+        tablesContainer.innerHTML = '';
+        const sortedDates = Object.keys(groupedData).sort((a, b) => new Date(b) - new Date(a));
+        for (const fecha of sortedDates) {
+            const items = groupedData[fecha];
+            const table = document.createElement('table');
+            table.className = 'table table-striped table-bordered';
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Acciones</th>
+                        <th>Área</th>
+                        <th>Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map(item => `
+                        <tr>
+                            <td>
+                                <button class="btn btn-warning btn-sm edit-btn">Editar</button>
+                                <button class="btn btn-danger btn-sm delete-btn">Borrar</button>
+                            </td>
+                            <td>${item.area}</td>
+                            <td>${formatCurrency(item.monto)}</td>
+                        </tr>
+                    `).join('')}
+                    <tr class="total-row">
+                        <td colspan="2">Total (${fecha})</td>
+                        <td>${formatCurrency(items.reduce((sum, item) => sum + item.monto, 0))}</td>
+                    </tr>
+                </tbody>
+            `;
+            tablesContainer.insertBefore(table, tablesContainer.firstChild); // Insertar al inicio
+            items.forEach((item, index) => {
+                const row = table.querySelectorAll('tbody tr')[index];
+                addRowEventListeners(row, item.monto, item.fecha);
+            });
+        }
+    }
+
+    function addRowEventListeners(row, monto, fecha) {
+        row.querySelector('.delete-btn').addEventListener('click', function() {
+            total -= monto;
+            document.getElementById('total').innerText = formatCurrency(total);
+            const data = JSON.parse(localStorage.getItem('data')) || [];
+            const index = data.findIndex(item => item.monto === monto && item.fecha === fecha);
+            data.splice(index, 1);
+            saveToLocalStorage(data, total);
+            loadFromLocalStorage();
+        });
+
+        row.querySelector('.edit-btn').addEventListener('click', function() {
+            const area = row.cells[1].innerText;
+            const monto = parseFloat(row.cells[2].innerText.replace(/\$|,/g, ''));
+            const fecha = row.cells[3].innerText.split('/').reverse().join('-');
+            document.getElementById('area').value = area;
+            document.getElementById('monto').value = monto;
+            document.getElementById('fecha').value = fecha;
+            total -= monto;
+            document.getElementById('total').innerText = formatCurrency(total);
+            const data = JSON.parse(localStorage.getItem('data')) || [];
+            const index = data.findIndex(item => item.monto === monto && item.fecha === fecha);
+            data.splice(index, 1);
+            saveToLocalStorage(data, total);
+            loadFromLocalStorage();
+            $('#dataModal').modal('show');
+        });
+    }
+
+    document.getElementById('dataForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const area = document.getElementById('area').value;
+        const monto = parseFloat(document.getElementById('monto').value.replace(/\$|,/g, '').replace(/\./g, ''));
+                const fecha = new Date(document.getElementById('fecha').value);
+        fecha.setMinutes(fecha.getMinutes() + fecha.getTimezoneOffset());
+        const fechaFormateada = fecha.toLocaleDateString('es-ES');
+
+        total += monto;
+        document.getElementById('total').innerText = formatCurrency(total);
+
+        const data = JSON.parse(localStorage.getItem('data')) || [];
+        data.unshift({ area, monto, fecha: fechaFormateada }); // Agregar al inicio
+        saveToLocalStorage(data, total);
+
+        document.getElementById('dataForm').reset();
+        $('#dataModal').modal('hide');
+
+        loadFromLocalStorage();
+    });
+
+    document.getElementById('clearTotal').addEventListener('click', function() {
+        total = 0;
+        document.getElementById('total').innerText = formatCurrency(total);
+        localStorage.setItem('total', total);
+    });
+
+    function formatInputValue(value) {
+        return value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    document.getElementById('monto').addEventListener('input', function(event) {
+        const value = event.target.value.replace(/\$|,/g, '');
+        event.target.value = formatInputValue(value);
+    });
+
+    document.getElementById('monto').addEventListener('blur', function(event) {
+        const value = event.target.value.replace(/\$|,/g, '');
+        event.target.value = formatCurrency(parseFloat(value.replace(/\./g, '')) || 0).replace('$', '');
+    });
+
+    window.onload = loadFromLocalStorage;
+
+    // Botón de minimizar toda la tabla
+    document.querySelector('.minimize-btn').addEventListener('click', function() {
+        const tables = document.querySelectorAll('.table');
+        tables.forEach(table => {
+            const rows = table.querySelectorAll('tbody tr');
+            for (let i = 1; i < rows.length; i++) {
+                rows[i].classList.toggle('d-none');
+            }
+        });
+
+        // Mostrar solo el último total y su fecha
+        const lastTable = tables[0];
+        const lastTotalRow = lastTable.querySelector('.total-row');
+        lastTotalRow.classList.remove('d-none');
+    });
+</script>
+</body>
+</html>
