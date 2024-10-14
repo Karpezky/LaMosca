@@ -34,7 +34,7 @@
         }
 
         input[type="text"], input[type="date"], input[type="number"] {
-            width: 100%;
+            width: 95%;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
@@ -151,7 +151,7 @@
     </style>
 </head>
 <body>
-    <h2>Formulario para Agregar Datos de Propina</h2>
+    <h2>Formulario para Agregar Datos</h2>
     <button class="toggle-button" onclick="toggleVisibility('formulario')">Minimizar/Maximizar Formulario</button>
     <div id="formulario">
         <form onsubmit="agregarDatos(); return false;">
@@ -192,7 +192,7 @@
         let data = [];
 
         function cargarDatos() {
-            const datosGuardados = JSON.parse(localStorage.getItem('data'));
+            const datosGuardados = JSON.parse(localStorage.getItem('data')) || [];
             if (Array.isArray(datosGuardados)) {
                 data = datosGuardados;
             }
@@ -200,18 +200,17 @@
         }
 
         function agregarDatos() {
-            const nombre = document.getElementById("nombre").value;
-            const apellido = document.getElementById("apellido").value;
+            const nombre = document.getElementById("nombre").value.trim();
+            const apellido = document.getElementById("apellido").value.trim();
             const fecha = document.getElementById("fecha").value;
             const monto = parseFloat(document.getElementById("monto").value);
 
-            if (isNaN(monto) || monto <= 0) {
-                alert("Por favor, ingresa un monto válido.");
+            if (!nombre || !apellido || !fecha || isNaN(monto) || monto <= 0) {
+                alert("Por favor, completa todos los campos correctamente.");
                 return;
             }
 
             const found = data.find(d => d.nombre === nombre && d.apellido === apellido);
-
             if (found) {
                 const existente = found.montos.find(m => m.fecha === fecha);
                 if (existente) {
@@ -254,8 +253,8 @@
             const contenedor = document.getElementById("contenedor-tablas");
             contenedor.innerHTML = "";
 
-            const dataFiltrada = data.filter(d => 
-                d.nombre.toLowerCase().includes(filtroNombre.toLowerCase()) && 
+            const dataFiltrada = data.filter(d =>
+                d.nombre.toLowerCase().includes(filtroNombre.toLowerCase()) &&
                 d.apellido.toLowerCase().includes(filtroApellido.toLowerCase())
             );
 
@@ -309,7 +308,6 @@
             actualizarTablas();
         }
 
-        // Función para minimizar o maximizar una sección
         function toggleVisibility(id) {
             const element = document.getElementById(id);
             if (element.style.display === "none") {
@@ -319,7 +317,6 @@
             }
         }
 
-        // Cargar los datos del localStorage cuando se carga la página
         window.onload = cargarDatos;
     </script>
 </body>
