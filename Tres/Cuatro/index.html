@@ -108,45 +108,12 @@
             background-color: #c0392b;
         }
 
-        input[type="text"], input[type="date"], input[type="number"], button {
-            font-family: inherit;
-        }
-
         .titulo-tabla {
             background-color: #f4f4f9;
             color: #333;
             font-size: 16px;
             padding: 15px;
             text-align: left;
-        }
-
-        .contenedor-tabla {
-            margin-bottom: 30px;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .contenedor-tabla button.borrar {
-            display: inline-block;
-            margin-top: 10px;
-        }
-
-        .toggle-button {
-            background-color: #4a90e2;
-            color: #fff;
-            padding: 5px 10px;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-bottom: 10px;
-        }
-
-        .toggle-button:hover {
-            background-color: #357ab8;
         }
     </style>
 </head>
@@ -192,21 +159,27 @@
         let data = [];
 
         function cargarDatos() {
-            const datosGuardados = JSON.parse(localStorage.getItem('data')) || [];
-            if (Array.isArray(datosGuardados)) {
-                data = datosGuardados;
+            try {
+                const datosGuardados = JSON.parse(localStorage.getItem('data'));
+                if (Array.isArray(datosGuardados)) {
+                    data = datosGuardados;
+                } else {
+                    console.warn("No se encontraron datos válidos en localStorage.");
+                }
+            } catch (error) {
+                console.error("Error al cargar datos de localStorage:", error);
             }
             actualizarTablas();
         }
 
         function agregarDatos() {
-            const nombre = document.getElementById("nombre").value.trim();
-            const apellido = document.getElementById("apellido").value.trim();
+            const nombre = document.getElementById("nombre").value;
+            const apellido = document.getElementById("apellido").value;
             const fecha = document.getElementById("fecha").value;
             const monto = parseFloat(document.getElementById("monto").value);
 
-            if (!nombre || !apellido || !fecha || isNaN(monto) || monto <= 0) {
-                alert("Por favor, completa todos los campos correctamente.");
+            if (isNaN(monto) || monto <= 0) {
+                alert("Por favor, ingresa un monto válido.");
                 return;
             }
 
@@ -224,8 +197,8 @@
             }
 
             localStorage.setItem('data', JSON.stringify(data));
-            actualizarTablas();
 
+            actualizarTablas();
             document.getElementById("nombre").value = "";
             document.getElementById("apellido").value = "";
             document.getElementById("fecha").value = "";
@@ -253,7 +226,8 @@
             const contenedor = document.getElementById("contenedor-tablas");
             contenedor.innerHTML = "";
 
-            const dataFiltrada = data.filter(d =>
+            const dataFiltrada = data.filter(d => 
+                d.nombre && d.apellido && // Verifica que nombre y apellido existan
                 d.nombre.toLowerCase().includes(filtroNombre.toLowerCase()) &&
                 d.apellido.toLowerCase().includes(filtroApellido.toLowerCase())
             );
